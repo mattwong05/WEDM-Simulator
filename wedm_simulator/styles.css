@@ -48,6 +48,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: clamp(12px, 1.3vw, 48px);
 }
 
 #controls-buttons {
@@ -59,6 +60,7 @@ body {
 #controls input {
   width: 50px;
   margin: 0 10px;
+  text-align: center;
 }
 
 #controls button {
@@ -106,7 +108,6 @@ body {
   #controls input {
     width: 70px;
     font-size: clamp(14px, 2.5vw, 48px);
-    text-align: center;
   }
 
   #controls button {
