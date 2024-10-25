@@ -5,6 +5,18 @@ const editor = CodeMirror.fromTextArea(document.getElementById('gcode-editor'), 
   theme: 'default'
 });
 
+// Reset simulator when code changes
+editor.on('change', () => {
+  initializeSimulator();
+});
+
+function clearHighlightedLines() {
+  const totalLines = editor.lineCount();
+  for (let i = 0; i < totalLines; i++) {
+    editor.removeLineClass(i, 'background', 'highlighted-line');
+  }
+}
+
 // Initialize canvas and simulator variables
 const canvas = document.getElementById('simulation-canvas');
 const canvasContainer = document.getElementById('canvas-container');
@@ -37,12 +49,57 @@ document.getElementById('reset-btn').addEventListener('click', () => {
   if (simulator) simulator.reset();
 });
 
+// Reset simulator when scale changes
+document.getElementById('scale-input').addEventListener('change', () => {
+  initializeSimulator();
+});
+
+document.getElementById('speed-input').addEventListener('change', () => {
+  if (simulator) {
+    const newSpeed = parseInt(document.getElementById('speed-input').value, 10);
+    simulator.updateSpeed(newSpeed);
+  }
+});
+
+function resizeCanvas() {
+  const canvas = document.getElementById('simulation-canvas');
+  const container = document.getElementById('canvas-container');
+
+  // 获取容器宽高
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  // 设置画布的显示尺寸
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+
+  // 设置画布的实际尺寸（保证绘图比例）
+  canvas.width = width * window.devicePixelRatio;
+  canvas.height = height * window.devicePixelRatio;
+
+  // 更新绘制比例
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  initializeSimulator();
+}
+
+// 页面加载和窗口大小改变时触发 resizeCanvas
+window.addEventListener('load', resizeCanvas);
+window.addEventListener('resize', resizeCanvas);
+
+
 function initializeSimulator() {
   const code = editor.getValue();
   const commands = parseGCode(code);
   const speed = parseInt(document.getElementById('speed-input').value, 10);
   const scale = parseFloat(document.getElementById('scale-input').value);
+
+  if (simulator) {
+    simulator.pause();
+    simulator.reset();
+  }
   simulator = new Simulator(canvas, commands, speed, scale);
+  simulator.reset();
 }
 
 function parseGCode(code) {
@@ -90,7 +147,11 @@ class Simulator {
     // Adjust coordinate system to match typical G-Code coordinate system
     this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
     this.ctx.scale(1, -1); // Invert Y-axis
-    this.ctx.lineWidth = 1 / this.scale;
+    this.ctx.lineWidth = this.scale;
+  }
+
+  updateSpeed(newSpeed) {
+    this.speed = newSpeed;
   }
 
   reset() {
@@ -101,10 +162,8 @@ class Simulator {
     this.origin = { x: 0, y: 0 };
     this.commandIndex = 0;
     this.isRunning = false;
-    if (this.previousLine !== null) {
-      editor.removeLineClass(this.previousLine, 'background', 'highlighted-line');
-      this.previousLine = null;
-    }
+    clearHighlightedLines();
+    this.ctx.lineWidth = 1.5 * this.scale;
   }
 
   step() {
